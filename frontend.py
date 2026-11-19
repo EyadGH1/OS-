@@ -227,19 +227,23 @@ class SchedulerApp(tk.Tk):
         self.priority_var.set(str(DEPT_PRIORITY.get(self.dept_var.get(), 6)))
 
     def _add_request(self):
+        name = self.name_var.get().strip() or f"P{self._counter}"
         try:
-            name     = self.name_var.get().strip() or f"P{self._counter}"
-            arrival  = int(self.arrival_var.get())
-            burst    = int(self.burst_var.get())
+            arrival = int(self.arrival_var.get())
+            burst = int(self.burst_var.get())
             priority = int(self.priority_var.get())
-            dept     = self.dept_var.get()
-            if burst <= 0:
-                raise ValueError("Burst time must be greater than 0")
-            if arrival < 0:
-                raise ValueError("Arrival time cannot be negative")
-        except ValueError as e:
-            messagebox.showerror("Input Error", str(e))
+        except ValueError:
+            messagebox.showerror("Input Error", "Arrival, burst, and priority must be valid numbers.")
             return
+
+        if burst <= 0:
+            messagebox.showerror("Input Error", "Burst time must be greater than 0.")
+            return
+        if arrival < 0:
+            messagebox.showerror("Input Error", "Arrival time cannot be negative.")
+            return
+
+        dept = self.dept_var.get()
 
         req = Request(name, arrival, burst, priority, dept)
         self.requests.append(req)
@@ -314,24 +318,6 @@ class SchedulerApp(tk.Tk):
         col3.pack(side="left", anchor="s", pady=(14, 0))
         self._button(col3, "Run", self._run_algorithm).pack()
 
-        # metrics row
-        self.metric_labels = {}
-        metric_card = self._card(page, fill="x", padx=30, pady=(0, 16))
-        metric_row = tk.Frame(metric_card, bg=WHITE, padx=20, pady=14)
-        metric_row.pack(fill="x")
-
-        for key, label in [("avg_waiting", "Avg Waiting Time"),
-                            ("avg_turnaround", "Avg Turnaround Time"),
-                            ("avg_response", "Avg Response Time")]:
-            box = tk.Frame(metric_row, bg="#eff6ff", padx=20, pady=10)
-            box.pack(side="left", padx=(0, 12))
-            tk.Label(box, text=label, bg="#eff6ff", fg=SUBTEXT,
-                     font=("Segoe UI", 8)).pack(anchor="w")
-            val_lbl = tk.Label(box, text="—", bg="#eff6ff", fg=ACCENT,
-                               font=("Segoe UI", 14, "bold"))
-            val_lbl.pack(anchor="w")
-            self.metric_labels[key] = val_lbl
-
         # results table
         tbl_card = self._card(page, fill="both", expand=True, padx=30, pady=(0, 24))
         tbl_inner = tk.Frame(tbl_card, bg=WHITE, padx=4, pady=4)
@@ -356,28 +342,28 @@ class SchedulerApp(tk.Tk):
         if not self.requests:
             messagebox.showwarning("No Requests", "Add at least one request first.")
             return
+
         try:
             quantum = int(self.quantum_var.get())
-            if quantum <= 0:
-                raise ValueError
         except ValueError:
-            messagebox.showerror("Error", "Time quantum must be a positive integer.")
+            messagebox.showerror("Error", "Time quantum must be a number.")
+            return
+
+        if quantum <= 0:
+            messagebox.showerror("Error", "Time quantum must be greater than 0.")
             return
 
         algo = self.algo_var.get()
         if algo == "FCFS":
-            procs, metrics = fcfs(self.requests)
+            procs = fcfs(self.requests)
         elif algo == "SJF":
-            procs, metrics = sjf(self.requests)
+            procs = sjf(self.requests)
         elif algo == "SRTF":
-            procs, metrics = srtf(self.requests)
+            procs = srtf(self.requests)
         elif algo == "Priority":
-            procs, metrics = priority_schedule(self.requests)
+            procs = priority_schedule(self.requests)
         else:
-            procs, metrics = round_robin(self.requests, quantum)
-
-        for key, lbl in self.metric_labels.items():
-            lbl.config(text=f"{metrics[key]:.2f}")
+            procs = round_robin(self.requests, quantum)
 
         for item in self.res_tree.get_children():
             self.res_tree.delete(item)
