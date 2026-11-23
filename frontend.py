@@ -8,9 +8,15 @@ from SRTF       import srtf
 from Priority   import priority_schedule
 from RoundRobin import round_robin
 
-DEPARTMENTS = ["Emergency", "ICU", "Surgery", "Radiology", "Pharmacy", "General"]
-DEPT_PRIORITY = {d: i + 1 for i, d in enumerate(DEPARTMENTS)}
-ALGORITHMS = ["FCFS", "SJF", "SRTF", "Priority", "Round Robin"]
+# only the 4 hospital departments (Emergency has highest priority = 1)
+DEPARTMENTS = ["Emergency", "Laboratory", "Radiology", "Pharmacy"]
+DEPT_PRIORITY = {
+    "Emergency": 1,
+    "Laboratory": 2,
+    "Radiology": 3,
+    "Pharmacy": 4,
+}
+ALGORITHMS = ["FCFS", "SJF", "SRTF", "Priority (Preemptive)", "Round Robin"]
 
 # color palette
 BG        = "#f4f6f9"
@@ -26,7 +32,7 @@ ROW_ALT   = "#f9fafb"
 class SchedulerApp(tk.Tk):
     def __init__(self, initial_requests=None):
         super().__init__()
-        self.title("Hospital Request Scheduler")
+        self.title("Hospital Server OS Simulator")
         self.geometry("1150x700")
         self.configure(bg=BG)
         self.resizable(True, True)
@@ -65,15 +71,13 @@ class SchedulerApp(tk.Tk):
         sidebar.pack(side="left", fill="y")
         sidebar.pack_propagate(False)
 
-        tk.Label(sidebar, text="Scheduler",
+        tk.Label(sidebar, text="Hospital Server",
                  bg=SIDEBAR, fg=WHITE,
-                 font=("Segoe UI", 15, "bold"),
-                 pady=20).pack(fill="x")
+                 font=("Segoe UI", 14, "bold")).pack(fill="x", pady=(20, 2))
 
-        tk.Label(sidebar, text="Hospital Request Manager",
+        tk.Label(sidebar, text="OS Simulator",
                  bg=SIDEBAR, fg="#94a3b8",
-                 font=("Segoe UI", 8),
-                 wraplength=180).pack(padx=16)
+                 font=("Segoe UI", 10)).pack(fill="x")
 
         tk.Frame(sidebar, bg="#2d3f52", height=1).pack(fill="x", padx=16, pady=20)
 
@@ -106,7 +110,6 @@ class SchedulerApp(tk.Tk):
             page.pack_forget()
         self._pages[name].pack(fill="both", expand=True)
 
-    # page header helper
     def _page_header(self, parent, title, subtitle=""):
         hdr = tk.Frame(parent, bg=BG)
         hdr.pack(fill="x", padx=30, pady=(24, 10))
@@ -117,14 +120,12 @@ class SchedulerApp(tk.Tk):
                      font=("Segoe UI", 9)).pack(anchor="w")
         tk.Frame(parent, bg=BORDER, height=1).pack(fill="x", padx=30, pady=(0, 16))
 
-    # card container
     def _card(self, parent, **pack_kwargs):
         card = tk.Frame(parent, bg=WHITE, relief="flat",
                         highlightbackground=BORDER, highlightthickness=1)
         card.pack(**pack_kwargs)
         return card
 
-    # small label above an entry
     def _field_label(self, parent, text):
         tk.Label(parent, text=text, bg=WHITE, fg=SUBTEXT,
                  font=("Segoe UI", 8)).pack(anchor="w")
@@ -155,8 +156,8 @@ class SchedulerApp(tk.Tk):
         page = tk.Frame(self._content, bg=BG)
         self._pages["requests"] = page
 
-        self._page_header(page, "Requests",
-                          "Add and manage hospital department requests")
+        self._page_header(page, "Hospital Requests",
+                          "Manage requests from Emergency, Laboratory, Radiology, and Pharmacy")
 
         # form card
         form_card = self._card(page, fill="x", padx=30, pady=(0, 16))
@@ -170,24 +171,23 @@ class SchedulerApp(tk.Tk):
         row.pack(fill="x")
 
         # fields
-        self.name_var    = tk.StringVar(value=f"P{self._counter}")
-        self.arrival_var = tk.StringVar()
-        self.burst_var   = tk.StringVar()
-        self.priority_var = tk.StringVar(value="6")
-        self.dept_var    = tk.StringVar(value="General")
+        self.name_var     = tk.StringVar(value=f"P{self._counter}")
+        self.arrival_var  = tk.StringVar()
+        self.burst_var    = tk.StringVar()
+        self.dept_var     = tk.StringVar(value="Emergency")
+        self.priority_var = tk.StringVar(value="1")
 
         for label, var, w in [
             ("Process Name", self.name_var, 12),
             ("Arrival Time", self.arrival_var, 12),
             ("Burst Time",   self.burst_var, 12),
-            ("Priority",     self.priority_var, 8),
         ]:
             col = tk.Frame(row, bg=WHITE)
             col.pack(side="left", padx=(0, 20))
             self._field_label(col, label)
             self._entry(col, var, w)
 
-        # department dropdown
+        # department dropdown (Emergency, Laboratory, Radiology, Pharmacy)
         col = tk.Frame(row, bg=WHITE)
         col.pack(side="left", padx=(0, 20))
         self._field_label(col, "Department")
@@ -197,12 +197,18 @@ class SchedulerApp(tk.Tk):
         dept_cb.pack(anchor="w", pady=(0, 10))
         dept_cb.bind("<<ComboboxSelected>>", self._on_dept_change)
 
+        # priority field (auto-set based on department, but can be customized)
+        col_pri = tk.Frame(row, bg=WHITE)
+        col_pri.pack(side="left", padx=(0, 20))
+        self._field_label(col_pri, "Priority (1=High)")
+        self._entry(col_pri, self.priority_var, 8)
+
         # buttons
         btn_row = tk.Frame(inner, bg=WHITE)
         btn_row.pack(anchor="w", pady=(4, 0))
-        self._button(btn_row, "Add Request",   self._add_request).pack(side="left", padx=(0, 8))
+        self._button(btn_row, "Add Request",     self._add_request).pack(side="left", padx=(0, 8))
         self._button(btn_row, "Remove Selected", self._del_request, "#ef4444").pack(side="left", padx=(0, 8))
-        self._button(btn_row, "Clear All",     self._clear_all, "#6b7280").pack(side="left")
+        self._button(btn_row, "Clear All",       self._clear_all, "#6b7280").pack(side="left")
 
         # table card
         tbl_card = self._card(page, fill="both", expand=True, padx=30, pady=(0, 24))
@@ -224,7 +230,7 @@ class SchedulerApp(tk.Tk):
         sb.pack(side="right", fill="y")
 
     def _on_dept_change(self, _=None):
-        self.priority_var.set(str(DEPT_PRIORITY.get(self.dept_var.get(), 6)))
+        self.priority_var.set(str(DEPT_PRIORITY.get(self.dept_var.get(), 1)))
 
     def _add_request(self):
         name = self.name_var.get().strip() or f"P{self._counter}"
@@ -244,7 +250,6 @@ class SchedulerApp(tk.Tk):
             return
 
         dept = self.dept_var.get()
-
         req = Request(name, arrival, burst, priority, dept)
         self.requests.append(req)
         self._counter += 1
@@ -287,7 +292,7 @@ class SchedulerApp(tk.Tk):
         self._pages["run"] = page
 
         self._page_header(page, "Run Algorithm",
-                          "Select a scheduling algorithm and view the results")
+                          "Select a scheduling algorithm and view process completion details")
 
         # controls card
         ctrl_card = self._card(page, fill="x", padx=30, pady=(0, 16))
@@ -304,7 +309,7 @@ class SchedulerApp(tk.Tk):
         self.algo_var = tk.StringVar(value=ALGORITHMS[0])
         ttk.Combobox(col1, textvariable=self.algo_var,
                      values=ALGORITHMS, state="readonly",
-                     width=20, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 10))
+                     width=22, font=("Segoe UI", 10)).pack(anchor="w", pady=(0, 10))
 
         # quantum
         col2 = tk.Frame(row, bg=WHITE)
@@ -360,7 +365,7 @@ class SchedulerApp(tk.Tk):
             procs = sjf(self.requests)
         elif algo == "SRTF":
             procs = srtf(self.requests)
-        elif algo == "Priority":
+        elif "Priority" in algo:
             procs = priority_schedule(self.requests)
         else:
             procs = round_robin(self.requests, quantum)
@@ -380,9 +385,9 @@ if __name__ == "__main__":
     from request import Request
     requests = [
         Request("P1", 0, 8, 1, "Emergency"),
-        Request("P2", 2, 4, 2, "ICU"),
-        Request("P3", 4, 5, 3, "Surgery"),
-        Request("P4", 6, 3, 6, "General"),
+        Request("P2", 2, 4, 2, "Laboratory"),
+        Request("P3", 4, 5, 3, "Radiology"),
+        Request("P4", 6, 3, 4, "Pharmacy"),
     ]
     app = SchedulerApp(requests)
     app.mainloop()

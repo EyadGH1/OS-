@@ -1,5 +1,5 @@
 class Request:
-    def __init__(self, name, arrival_time, burst_time, priority, department="General"):
+    def __init__(self, name, arrival_time, burst_time, priority, department="Emergency"):
         self.name         = name
         self.Arrival_Time = arrival_time
         self.burst_time   = burst_time

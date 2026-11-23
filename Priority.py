@@ -2,30 +2,33 @@ def priority_schedule(requests):
     for p in requests:
         p.reset()
 
-    ready     = []
-    done      = []
-    time      = 0
-    remaining = list(requests)
+    n    = len(requests)
+    done = 0
+    time = 0
 
-    while remaining or ready:
-        for p in [p for p in remaining if p.Arrival_Time <= time]:
-            ready.append(p)
-            remaining.remove(p)
+    while done < n:
+        # get arrived processes that are not finished yet
+        candidates = [p for p in requests if p.Arrival_Time <= time and p.remaining_time > 0]
 
-        if not ready:
-            time = min(p.Arrival_Time for p in remaining)
+        if not candidates:
+            time += 1
             continue
 
-        # lower number = higher priority (Emergency = 1)
-        ready.sort(key=lambda p: (p.priority, p.Arrival_Time))
-        p = ready.pop(0)
+        # lowest number = highest priority (Emergency = 1), tie broken by arrival
+        candidates.sort(key=lambda p: (p.priority, p.Arrival_Time))
+        cur = candidates[0]
 
-        p.response_time   = time - p.Arrival_Time
-        time             += p.burst_time
-        p.completion_time = time
-        p.turnaround_time = p.completion_time - p.Arrival_Time
-        p.waiting_time    = p.turnaround_time - p.burst_time
-        p.handled         = True
-        done.append(p)
+        if cur.response_time == -1:
+            cur.response_time = time - cur.Arrival_Time
 
-    return done
+        cur.remaining_time -= 1
+        time += 1
+
+        if cur.remaining_time == 0:
+            cur.completion_time  = time
+            cur.turnaround_time  = cur.completion_time - cur.Arrival_Time
+            cur.waiting_time     = cur.turnaround_time - cur.burst_time
+            cur.handled          = True
+            done += 1
+
+    return requests
