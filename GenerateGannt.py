@@ -5,20 +5,12 @@ from SRTF       import srtf
 from Priority   import priority_schedule
 from RoundRobin import round_robin
 
-# Gantt chart + waiting time + turnaround time for every algorithm.
-# The algorithm files are NOT changed. We give them a "tracked" request that
-# writes down every time the CPU works on it, then we build the Gantt chart
-# from those notes.
-
-
 class TrackedRequest(Request):
     def __init__(self, name, arrival_time, burst_time, priority, department, log):
         self.log = log            # shared list for all requests of one run
         super().__init__(name, arrival_time, burst_time, priority, department)
 
     def __setattr__(self, attr, value):
-        # preemptive algorithms (SRTF, Priority, RR) lower remaining_time
-        # each time the request runs -> note (request, how long it ran)
         if attr == "remaining_time" and hasattr(self, "remaining_time"):
             if value < self.remaining_time:
                 self.log.append((self, self.remaining_time - value))
